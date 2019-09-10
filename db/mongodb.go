@@ -134,3 +134,6 @@ func (client *mongoClient) GetCtx() context.Context{
 	return ctx
 }
 
+func (client *mongoClient) GetDuration() time.Duration{
+	return client.duration
+}
