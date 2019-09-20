@@ -33,7 +33,7 @@ func GetConnection() *mongoClient{
  */
 func GetClientByOptions(mongoOptions *MongoOptions) (*mongoClient,error) {
 	if client,exists := clients[mongoOptions.name]; !exists {
-		database,err := createMongoDatabase(mongoOptions.server,mongoOptions.db,mongoOptions.timeout)
+		database,err := createMongoDatabase(mongoOptions.server,mongoOptions.db,mongoOptions.timeout,mongoOptions.userName,mongoOptions.userPass)
 		if err != nil {
 			return nil,err
 		}
