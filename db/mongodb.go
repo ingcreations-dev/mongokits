@@ -183,7 +183,8 @@ func (client *mongoClient) FindAllByCondition(tableName string,filter bson.M) (*
 }
 
 func (client *mongoClient) FindAll(tableName string)(*mongo.Cursor,error){
-	return client.database.Collection(tableName).Find(client.GetCtx(),nil)
+	return client.FindAllByCondition(tableName,bson.M{})
+	//return client.database.Collection(tableName).Find(client.GetCtx(),nil)
 }
 
 func (client *mongoClient) FindAndFill(tableName string,filter bson.M,array interface{}) error {
