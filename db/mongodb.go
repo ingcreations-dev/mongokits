@@ -9,6 +9,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -30,7 +31,7 @@ func GetConnection() *mongoClient{
 /**
 通过配置获取数据库客户端连接
  */
-func GetClientByName(mongoOptions *MongoOptions) (*mongoClient,error) {
+func GetClientByOptions(mongoOptions *MongoOptions) (*mongoClient,error) {
 	if client,exists := clients[mongoOptions.name]; !exists {
 		database,err := createMongoDatabase(mongoOptions.server,mongoOptions.db,mongoOptions.timeout)
 		if err != nil {
@@ -49,6 +50,28 @@ func GetClientByName(mongoOptions *MongoOptions) (*mongoClient,error) {
 	}
 }
 
+func GetClientByName(name string) (*mongoClient,error) {
+	if client,exists := clients[name]; !exists {
+		prefix := strings.ToUpper(name)
+		server := os.Getenv(fmt.Sprintf("%s_MONGODB_SERVER",prefix))
+		db := os.Getenv(fmt.Sprintf("%s_MONGODB_DB",prefix))
+		userName := os.Getenv(fmt.Sprintf("%s_MONGODB_USER_NAME",prefix))
+		userPass := os.Getenv(fmt.Sprintf("%s_MONGODB_USER_PASSWORD",prefix))
+		timeout,_ := strconv.Atoi(os.Getenv(fmt.Sprintf("%s_MONGODB_TIMEOUT",prefix)))
+		op := &MongoOptions{
+			name:     name,
+			server:   server,
+			db:       db,
+			timeout:  timeout,
+			userName: userName,
+			userPass: userPass,
+		}
+		return GetClientByOptions(op)
+	} else {
+		return client,nil
+	}
+}
+
 /**
 初始化默认配置Mongodb数据库链接
  */
@@ -58,7 +81,7 @@ func initializer() *mongoClient {
 	userName := os.Getenv("MONGODB_USER_NAME")
 	userPass := os.Getenv("MONGODB_USER_PASSWORD")
 	timeout,_ := strconv.Atoi(os.Getenv("MONGODB_TIMEOUT"))
-	database,err := createMongoDatabase(server,db,timeout)
+	database,err := createMongoDatabase(server,db,timeout,userName,userPass)
 	if err != nil{
 		panic("Default mongodb config not found")
 	}
@@ -80,7 +103,7 @@ func initializer() *mongoClient {
 	return client
 }
 
-func createMongoDatabase(server string,db string,timeout int) (*mongo.Database,error){
+func createMongoDatabase(server string,db string,timeout int,userName string,userPassword string) (*mongo.Database,error){
 	client,err := mongo.NewClient(options.Client().ApplyURI(server))
 	if err != nil {
 		return nil,err
