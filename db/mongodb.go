@@ -111,7 +111,6 @@ func createMongoDatabase(server string,db string,timeout int,userName string,use
 	dur := time.Duration(timeout) * time.Second
 	ctx,_ := context.WithTimeout(context.Background(),dur)
 	client.Connect(ctx)
-	ctx,_ = context.WithTimeout(context.Background(),dur)
 	err = client.Ping(ctx,readpref.Primary())
 	if err != nil{
 		return nil,err
