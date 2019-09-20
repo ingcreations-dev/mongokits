@@ -12,27 +12,78 @@ import (
 	"time"
 )
 
-var mongodb *mongoClient = nil
-
+var clients = make(map[string]*mongoClient)
 type mongoClient struct {
 	database *mongo.Database
 	duration time.Duration
+	options *MongoOptions
 }
 
 func GetConnection() *mongoClient{
-	if nil == mongodb{
-		initializer()
+	if client,exist := clients["default"]; exist {
+		return client
+	}else {
+		return initializer()
 	}
-	return mongodb
 }
 
-func initializer() {
+/**
+通过配置获取数据库客户端连接
+ */
+func GetClientByName(mongoOptions *MongoOptions) (*mongoClient,error) {
+	if client,exists := clients[mongoOptions.name]; !exists {
+		database,err := createMongoDatabase(mongoOptions.server,mongoOptions.db,mongoOptions.timeout)
+		if err != nil {
+			return nil,err
+		}
+
+		client = &mongoClient{
+			database : database,
+			duration: time.Duration(mongoOptions.timeout) * time.Second,
+			options: mongoOptions,
+		}
+		clients[mongoOptions.name] = client
+		return client,nil
+	} else {
+		return client,nil
+	}
+}
+
+/**
+初始化默认配置Mongodb数据库链接
+ */
+func initializer() *mongoClient {
 	server := os.Getenv("MONGODB_SERVER")
 	db := os.Getenv("MONGODB_DB")
+	userName := os.Getenv("MONGODB_USER_NAME")
+	userPass := os.Getenv("MONGODB_USER_PASSWORD")
 	timeout,_ := strconv.Atoi(os.Getenv("MONGODB_TIMEOUT"))
+	database,err := createMongoDatabase(server,db,timeout)
+	if err != nil{
+		panic("Default mongodb config not found")
+	}
+
+	op := &MongoOptions{
+		name:     "default",
+		server:   server,
+		db:       db,
+		timeout:  timeout,
+		userName: userName,
+		userPass: userPass,
+	}
+	client := &mongoClient{
+		database : database,
+		duration: time.Duration(timeout) * time.Second,
+		options: op,
+	}
+	clients[op.name] = client
+	return client
+}
+
+func createMongoDatabase(server string,db string,timeout int) (*mongo.Database,error){
 	client,err := mongo.NewClient(options.Client().ApplyURI(server))
 	if err != nil {
-		panic(err.Error())
+		return nil,err
 	}
 	dur := time.Duration(timeout) * time.Second
 	ctx,_ := context.WithTimeout(context.Background(),dur)
@@ -40,13 +91,9 @@ func initializer() {
 
 	err = client.Ping(ctx,readpref.Primary())
 	if err != nil{
-		panic(err.Error())
+		return nil,err
 	}
-
-	mongodb = &mongoClient{
-		database : client.Database(db),
-		duration: dur,
-	}
+	return client.Database(db),nil
 }
 
 func (client *mongoClient) GetCollection(tableName string){
